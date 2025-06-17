@@ -10,7 +10,7 @@
 ;;
 ;; URL: http://github.com/abougouffa/dash-docs
 ;; Version: 2.0.0rc
-;; Package-Requires: ((emacs "29.1") (async "1.9.3"))
+;; Package-Requires: ((emacs "29.1"))
 ;; Keywords: docs
 
 ;; This program is free software; you can redistribute it and/or modify
@@ -39,7 +39,6 @@
 (require 'json)
 (require 'xml)
 (require 'format-spec)
-(require 'async)
 (require 'thingatpt)
 (require 'gnutls)
 
@@ -384,42 +383,8 @@ If doesn't exist, it asks to create it."
        (url-copy-file feed-url feed-tmp-path t))
       (dash-docs--install-docset (dash-docs-get-docset-url feed-tmp-path) docset-name))))
 
-;;;###autoload
-(defun dash-docs-async-install-docset (docset-name)
-  "Asynchronously download docset with specified DOCSET-NAME and move its stuff to docsets-path."
-  (interactive (list (dash-docs-read-docset "Install docset" (dash-docs-official-docsets))))
-  (when (dash-docs--ensure-created-docsets-path (dash-docs-docsets-path))
-    (let ((feed-url (format "%s/%s.xml" dash-docs-docsets-url docset-name)))
-      (message (concat "The docset \"" docset-name "\" will now be installed asynchronously."))
-      (async-start ; First async call gets the docset meta data
-       (lambda ()
-         ;; Beware! This lambda is run in it's own instance of emacs.
-         (dash-docs-with-emacs-bug-workaround
-          (url-file-local-copy feed-url)))
-       (lambda (filename)
-         (let ((docset-url (dash-docs-get-docset-url filename)))
-           (async-start     ; Second async call gets the docset itself
-            (lambda ()
-              ;; Beware! This lambda is run in it's own instance of emacs.
-              (dash-docs-with-emacs-bug-workaround
-               (url-file-local-copy docset-url)))
-            (lambda (docset-tmp-path)
-              (dash-docs-async-install-docset-from-file docset-tmp-path)))))))))
-
-;;;###autoload
-(defun dash-docs-async-install-docset-from-file (docset-tmp-path)
-  "Asynchronously extract the content of DOCSET-TMP-PATH, move it to `dash-docs-docsets-path` and activate the docset."
-  (interactive (list (car (find-file-read-args "Docset Tarball: " t))))
-  (async-start
-   (lambda ()
-     ;; Beware! This lambda is run in it's own instance of emacs.
-     (dash-docs-extract-and-get-folder docset-tmp-path))
-   (lambda (docset-folder)
-     (dash-docs-activate-docset docset-folder)
-     (message (format
-               "Docset installed. Add \"%s\" to dash-docs-common-docsets or dash-docs-docsets."
-               docset-folder)))))
-
+(define-obsolete-function-alias 'dash-docs-async-install-docset 'dash-docs-install-docset "2.0.0")
+(define-obsolete-function-alias 'dash-docs-async-install-docset-from-file 'dash-docs-install-docset-from-file "2.0.0")
 (defalias 'dash-docs-update-docset 'dash-docs-install-docset)
 
 (defun dash-docs-docset-installed-p (docset)
