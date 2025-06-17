@@ -87,8 +87,11 @@ Available formats are
   :type 'string
   :group 'dash-docs)
 
-(defvar dash-docs-common-docsets
-  '() "List of Docsets to search active by default.")
+(defvar-local dash-docs-docsets nil
+  "Buffer-local list of relevant docsets.")
+
+(defvar dash-docs-common-docsets nil
+  "List of Docsets to search active by default.")
 
 (defun dash-docs-docset-path (docset)
   "Return the full path of the directory for DOCSET."
