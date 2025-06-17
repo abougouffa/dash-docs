@@ -40,7 +40,6 @@
 (require 'xml)
 (require 'format-spec)
 (require 'thingatpt)
-(require 'gnutls)
 (require 'sqlite)
 
 (defgroup dash-docs nil
@@ -118,7 +117,7 @@ Available formats are
   "Default function to browse Dash's docsets.
 Suggested values are:
  * `browse-url'
- * `eww'"
+ * `eww-browse-url'"
   :type 'function
   :group 'dash-docs)
 
