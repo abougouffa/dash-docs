@@ -86,11 +86,24 @@ Available formats are
   :type 'string
   :group 'dash-docs)
 
+(defcustom dash-docs-extra-feeds-alist
+  '(("User Contributions" . "https://zealusercontributions.vercel.app/api/docsets")
+    ("Generated" . "https://zealusercontributions.vercel.app/api/generated")
+    ("Cheat Sheets" . "https://zealusercontributions.vercel.app/api/cheatsheets"))
+  "An alist of (feed-name . url) of extra docsets feeds."
+  :type 'alist
+  :group 'dash-docs)
+
 (defvar-local dash-docs-docsets nil
   "Buffer-local list of relevant docsets.")
 
 (defvar dash-docs-common-docsets nil
   "List of Docsets to search active by default.")
+
+(define-obsolete-function-alias 'dash-docs-async-install-docset 'dash-docs-install-docset "2.0.0")
+(define-obsolete-function-alias 'dash-docs-async-install-docset-from-file 'dash-docs-install-docset-from-file "2.0.0")
+(define-obsolete-function-alias 'dash-docs-install-user-docset 'dash-docs-install-extra-docset "2.0.0")
+(defalias 'dash-docs-update-docset 'dash-docs-install-docset)
 
 (defun dash-docs-docset-path (docset)
   "Return the full path of the directory for DOCSET."
@@ -123,7 +136,9 @@ Suggested values are:
 
 (defun dash-docs-docsets-path ()
   "Return the path where Dash's docsets are stored."
-  (expand-file-name dash-docs-docsets-path))
+  (let ((path (expand-file-name dash-docs-docsets-path)))
+    (unless (file-exists-p path) (mkdir path :parents))
+    (expand-file-name path)))
 
 (defun dash-docs-sql (db-path sql)
   "Run in the db located at DB-PATH the SQL command and return the results."
@@ -183,20 +198,18 @@ The Argument DB-PATH should be a string with the sqlite db path."
 
 (defun dash-docs-read-json-from-url (url)
   "Read and return a JSON object from URL."
-  (with-current-buffer
-      (url-retrieve-synchronously url)
+  (with-current-buffer (url-retrieve-synchronously url)
     (goto-char url-http-end-of-headers)
     (json-read)))
 
-(defun dash-docs-unofficial-docsets ()
-  "Return a list of lists with docsets contributed by users.
+
+(defun dash-docs-unofficial-docsets (feed)
+  "Return a list of lists with docsets contributed by users from FEED.
 The first element is the docset's name second the docset's archive url."
-  (let ((user-docs (dash-docs-read-json-from-url
-                    "https://dashes-to-dashes.herokuapp.com/docsets/contrib")))
+  (let ((user-docs (dash-docs-read-json-from-url feed)))
     (mapcar (lambda (docset)
-              (list
-               (assoc-default 'name docset)
-               (assoc-default 'archive docset)))
+              (list (assoc-default 'name docset)
+                    (seq-first (assoc-default 'urls docset))))
             user-docs)))
 
 (defvar dash-docs-ignored-docsets
@@ -259,22 +272,11 @@ Report an error unless a valid docset is selected."
     (url-copy-file url docset-tmp-path t)
     (dash-docs-install-docset-from-file docset-tmp-path)))
 
-(defun dash-docs--ensure-created-docsets-path (docset-path)
-  "Check if DOCSET-PATH directory exists.
-If doesn't exist, it asks to create it."
-  (or (file-directory-p docset-path)
-      (and (y-or-n-p (format "Directory %s does not exist.  Want to create it? "
-                             docset-path))
-           (mkdir docset-path t))))
-
 ;;;###autoload
-(defun dash-docs-install-user-docset (docset-name)
-  "Download an unofficial docset with specified DOCSET-NAME and move its stuff to docsets-path."
-  (interactive (list (dash-docs-read-docset
-                      "Install docset"
-                      (mapcar 'car (dash-docs-unofficial-docsets)))))
-  (when (dash-docs--ensure-created-docsets-path (dash-docs-docsets-path))
-    (dash-docs--install-docset (car (assoc-default docset-name (dash-docs-unofficial-docsets))) docset-name)))
+(defun dash-docs-register-for-buffer (docsets)
+  "Register DOCSETS for the current buffer."
+  (interactive (list (completing-read-multiple "Select docsets: " (dash-docs-installed-docsets) nil t)))
+  (setq-local dash-docs-docsets (cl-remove-duplicates (append dash-docs-docsets docsets))))
 
 (defun dash-docs-extract-and-get-folder (docset-temp-path)
   "Extract DOCSET-TEMP-PATH to DASH-DOCS-DOCSETS-PATH, and return the folder that was newly extracted."
@@ -302,30 +304,27 @@ If doesn't exist, it asks to create it."
 ;;;###autoload
 (defun dash-docs-install-docset-from-file (docset-tmp-path)
   "Extract the content of DOCSET-TMP-PATH, move it to `dash-docs-docsets-path` and activate the docset."
-  (interactive
-   (list (car (find-file-read-args "Docset Tarball: " t))))
+  (interactive (list (car (find-file-read-args "Docset Tarball: " t))))
   (let ((docset-folder (dash-docs-extract-and-get-folder docset-tmp-path)))
     (dash-docs-activate-docset docset-folder)
-    (message (format
-              "Docset installed. Add \"%s\" to dash-docs-common-docsets or dash-docs-docsets."
-              docset-folder))))
+    (message "Docset installed. Add \"%s\" to dash-docs-common-docsets or dash-docs-docsets." docset-folder)))
 
 ;;;###autoload
 (defun dash-docs-install-docset (docset-name)
   "Download an official docset with specified DOCSET-NAME and move its stuff to docsets-path."
-  (interactive (list (dash-docs-read-docset
-                      "Install docset"
-                      (dash-docs-official-docsets))))
+  (interactive (list (dash-docs-read-docset "Install docset" (dash-docs-official-docsets))))
+  (let ((feed-url (format "%s/%s.xml" dash-docs-docsets-url docset-name))
+        (feed-tmp-path (format "%s%s-feed.xml" temporary-file-directory docset-name)))
+    (url-copy-file feed-url feed-tmp-path t)
+    (dash-docs--install-docset (dash-docs-get-docset-url feed-tmp-path) docset-name)))
 
-  (when (dash-docs--ensure-created-docsets-path (dash-docs-docsets-path))
-    (let ((feed-url (format "%s/%s.xml" dash-docs-docsets-url docset-name))
-          (feed-tmp-path (format "%s%s-feed.xml" temporary-file-directory docset-name)))
-      (url-copy-file feed-url feed-tmp-path t)
-      (dash-docs--install-docset (dash-docs-get-docset-url feed-tmp-path) docset-name))))
-
-(define-obsolete-function-alias 'dash-docs-async-install-docset 'dash-docs-install-docset "2.0.0")
-(define-obsolete-function-alias 'dash-docs-async-install-docset-from-file 'dash-docs-install-docset-from-file "2.0.0")
-(defalias 'dash-docs-update-docset 'dash-docs-install-docset)
+;;;###autoload
+(defun dash-docs-install-extra-docset (docset feed)
+  "Install the unofficial DOCSET from FEED."
+  (interactive (list nil (completing-read "Select the feed: " (mapcar #'car dash-docs-extra-feeds-alist) nil t)))
+  (let* ((docsets (dash-docs-unofficial-docsets (alist-get feed dash-docs-extra-feeds-alist nil nil #'equal)))
+         (docset (or docset (dash-docs-read-docset "Install docset" (mapcar 'car docsets)))))
+    (dash-docs--install-docset (car (assoc-default docset docsets)) docset)))
 
 (defun dash-docs-docset-installed-p (docset)
   "Return non-nil if DOCSET is installed."
@@ -388,9 +387,7 @@ but it shouldn't be a problem as there won't be many."
 If the search starts with the name of the docset, ignore it.
 Ex: This avoids searching for redis in redis unless you type 'redis redis'"
   (replace-regexp-in-string
-   (format "^%s " (regexp-quote (downcase docset-name)))
-   ""
-   pattern))
+   (format "^%s " (regexp-quote (downcase docset-name))) "" pattern))
 
 (defun dash-docs--run-query (docset search-pattern)
   "Execute an sql query in dash docset DOCSET looking for SEARCH-PATTERN.
@@ -467,9 +464,8 @@ Get required params to call `dash-docs-result-url' from SEARCH-RESULT."
     (cl-loop for docset in (dash-docs-maybe-narrow-docsets pattern)
              appending (dash-docs-search-docset docset pattern))))
 
-;; Extend use package with :dash keyword if available
-(when (featurep 'use-package) (require 'use-package-dash-docs))
+;; Extend `use-package' with `:dash' keyword
+;;;###autoload(with-eval-after-load 'use-package (require 'use-package-dash-docs))
 
 (provide 'dash-docs)
-
 ;;; dash-docs.el ends here
