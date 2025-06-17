@@ -41,6 +41,7 @@
 (require 'format-spec)
 (require 'thingatpt)
 (require 'gnutls)
+(require 'sqlite)
 
 (defgroup dash-docs nil
   "Search Dash docsets."
@@ -129,31 +130,9 @@ Suggested values are:
   (expand-file-name dash-docs-docsets-path))
 
 (defun dash-docs-sql (db-path sql)
-  "Run in the db located at DB-PATH the SQL command and parse the results.
-If there are errors, print them in `dash-docs-debugging-buffer'"
-  (dash-docs-parse-sql-results
-   (with-output-to-string
-     (let ((error-file (when dash-docs-enable-debugging
-                         (make-temp-file "dash-docs-errors-file"))))
-       (call-process "sqlite3" nil (list standard-output error-file) nil
-                     ;; args for sqlite3:
-                     "-list" "-init" "''" db-path sql)
-
-       ;; display errors, stolen from emacs' `shell-command` function
-       (when (and error-file (file-exists-p error-file))
-         (if (< 0 (nth 7 (file-attributes error-file)))
-             (with-current-buffer (dash-docs-debugging-buffer)
-               (let ((pos-from-end (- (point-max) (point))))
-                 (or (bobp)
-                     (insert "\f\n"))
-                 ;; Do no formatting while reading error file,
-                 ;; because that can run a shell command, and we
-                 ;; don't want that to cause an infinite recursion.
-                 (format-insert-file error-file nil)
-                 ;; Put point after the inserted errors.
-                 (goto-char (- (point-max) pos-from-end)))
-               (display-buffer (current-buffer))))
-         (delete-file error-file))))))
+  "Run in the db located at DB-PATH the SQL command and return the results."
+  (let ((db (sqlite-open db-path t)))
+    (sqlite-execute db sql)))
 
 (defun dash-docs-parse-sql-results (sql-result-string)
   "Parse SQL-RESULT-STRING splitting it by newline and '|' chars."
