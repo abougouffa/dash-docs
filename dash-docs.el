@@ -1,14 +1,16 @@
-;;; dash-docs.el --- Offline documentation browser using Dash docsets.  -*- lexical-binding: t; -*-
-;; Copyright (C) 2013-2014  Raimon Grau
+;;; dash-docs.el --- Offline documentation browser using Dash docsets  -*- lexical-binding: t; -*-
+;; Copyright (C) 2013-2014, 2025  Raimon Grau
 ;; Copyright (C) 2013-2014  Toni Reina
+;; Copyright (C) 2025       Abdelhak Bougouffa
 
 ;; Author: Raimon Grau <raimonster@gmail.com>
 ;;         Toni Reina  <areina0@gmail.com>
 ;;         Bryan Gilbert <bryan@bryan.sh>
+;;         Abdelhak Bougouffa <abougouffa@fedoraproject.org>
 ;;
-;; URL: http://github.com/areina/helm-dash
-;; Version: 1.4.0
-;; Package-Requires: ((emacs "24.4") (cl-lib "0.5") (async "1.9.3"))
+;; URL: http://github.com/abougouffa/dash-docs
+;; Version: 2.0.0rc
+;; Package-Requires: ((emacs "29.1") (async "1.9.3"))
 ;; Keywords: docs
 
 ;; This program is free software; you can redistribute it and/or modify
@@ -29,7 +31,7 @@
 ;; A library that exposes functionality to work with and search dash
 ;; docsets.
 ;;
-;; More info in the project site https://github.com/areina/helm-dash
+;; More info in the project site https://github.com/abougouffa/dash-docs
 ;;
 ;;; Code:
 
