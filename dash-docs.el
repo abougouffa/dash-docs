@@ -58,7 +58,7 @@
 If you're setting this option manually, set it to an absolute
 path.  You can use `expand-file-name' function for that."
   :set (lambda (opt val) (set opt (expand-file-name val)))
-  :type 'string
+  :type 'directory
   :group 'dash-docs)
 
 (defcustom dash-docs-docsets-url "https://raw.github.com/Kapeli/feeds/master"
@@ -70,7 +70,7 @@ path.  You can use `expand-file-name' function for that."
   "Minimum length to start searching in docsets.
 0 facilitates discoverability, but may be a bit heavy when lots
 of docsets are active.  Between 0 and 3 is sane."
-  :type 'integer
+  :type 'natnum
   :group 'dash-docs)
 
 (defcustom dash-docs-candidate-format "%d %n (%t)"
@@ -213,8 +213,8 @@ If there are errors, print them in `dash-docs-debugging-buffer'"
   "Return the type of the docset based in db schema.
 Possible values are \"DASH\" and \"ZDASH\".
 The Argument DB-PATH should be a string with the sqlite db path."
-  (let ((type_sql "SELECT name FROM sqlite_master WHERE type = 'table' LIMIT 1"))
-    (if (member "searchIndex" (car (dash-docs-sql db-path type_sql)))
+  (let ((sql "SELECT name FROM sqlite_master WHERE type = 'table' LIMIT 1"))
+    (if (member "searchIndex" (car (dash-docs-sql db-path sql)))
         "DASH"
       "ZDASH")))
 
@@ -462,16 +462,14 @@ by whitespace and using like sql operator."
   "Return a SQL query to search documentation in dash docsets.
 A different query is returned depending on DOCSET-TYPE.  PATTERN
 is used to compose the SQL WHERE clause."
-  (let ((compose-select-query-func
-         (cdr (assoc (intern docset-type) dash-docs--sql-queries))))
-    (when compose-select-query-func
-      (funcall compose-select-query-func pattern))))
+  (when-let* ((func (alist-get (intern docset-type) dash-docs--sql-queries)))
+    (funcall func pattern)))
 
 (defun dash-docs-maybe-narrow-docsets (pattern)
   "Return a list of dash-docs-connections.
-If PATTERN starts with the name of a docset followed by a space, narrow the
- used connections to just that one.  We're looping on all connections, but it
- shouldn't be a problem as there won't be many."
+If PATTERN starts with the name of a docset followed by a space, narrow
+the used connections to just that one. We're looping on all connections,
+but it shouldn't be a problem as there won't be many."
   (let ((conns (dash-docs-filter-connections)))
     (or (cl-loop for x in conns
                  if (string-prefix-p
@@ -494,14 +492,14 @@ Ex: This avoids searching for redis in redis unless you type 'redis redis'"
 Return a list of db results.  Ex:
 
 '((\"func\" \"BLPOP\" \"commands/blpop.html\")
- (\"func\" \"PUBLISH\" \"commands/publish.html\")
- (\"func\" \"problems\" \"topics/problems.html\"))"
+  (\"func\" \"PUBLISH\" \"commands/publish.html\")
+  (\"func\" \"problems\" \"topics/problems.html\"))"
   (let ((docset-type (cl-caddr docset)))
     (dash-docs-sql
      (cadr docset)
-     (dash-docs-sql-query docset-type
-                          (dash-docs-sub-docset-name-in-pattern search-pattern
-                                                                (car docset))))))
+     (dash-docs-sql-query
+      docset-type
+      (dash-docs-sub-docset-name-in-pattern search-pattern (car docset))))))
 
 (defun dash-docs--candidate (docset row)
   "Return list extracting info from DOCSET and ROW to build a result candidate.
@@ -520,7 +518,7 @@ candidate opts."
 (defun dash-docs-result-url (docset-name filename &optional anchor)
   "Return the full, absolute URL to documentation.
 Either a file:/// URL joining DOCSET-NAME, FILENAME & ANCHOR with sanitization
- of spaces or a http(s):// URL formed as-is if FILENAME is a full HTTP(S) URL."
+of spaces or a http(s):// URL formed as-is if FILENAME is a full HTTP(S) URL."
   (let* ((clean-filename (replace-regexp-in-string "<dash_entry_.*>" "" filename))
          (path (format "%s%s" clean-filename (if anchor (format "#%s" anchor) ""))))
     (if (string-match-p "^https?://" path)
