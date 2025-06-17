@@ -87,12 +87,6 @@ Available formats are
   :type 'string
   :group 'dash-docs)
 
-(defcustom dash-docs-enable-debugging t
-  "When non-nil capture stderr from sql commands and display it in a buffer.
-Setting this to nil may speed up queries."
-  :type 'boolean
-  :group 'dash-docs)
-
 (defvar dash-docs-common-docsets
   '() "List of Docsets to search active by default.")
 
@@ -458,18 +452,6 @@ Get required params to call `dash-docs-result-url' from SEARCH-RESULT."
   (ignore actions)
   `(("Go to doc" . dash-docs-browse-url)
     ("Copy to clipboard" . dash-docs-add-to-kill-ring)))
-
-(defun dash-docs-debugging-buffer ()
-  "Return the dash-docs debugging buffer."
-  (get-buffer-create "*dash-docs-errors*"))
-
-(defun dash-docs-initialize-debugging-buffer ()
-  "Open debugging buffer and insert a header message."
-  (with-current-buffer (dash-docs-debugging-buffer)
-    (erase-buffer)
-    (insert "----------------")
-    (insert "\n HEY! This is dash-docs (sqlite) error logging. If you want to disable it, set `dash-docs-enable-debugging` to nil\n")
-    (insert "---------------- \n\n")))
 
 (defun dash-docs-search-docset (docset pattern)
   "Given a string PATTERN, query DOCSET and retrieve result."
