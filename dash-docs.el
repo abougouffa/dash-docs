@@ -48,11 +48,15 @@
   :group 'applications)
 
 (defcustom dash-docs-docsets-path
-  (let ((original-dash-path (expand-file-name "~/Library/Application Support/Dash/DocSets")))
-    (if (and (string-equal system-type 'darwin)
-             (file-directory-p original-dash-path))
-        original-dash-path
-      (expand-file-name "~/.docsets")))
+  (if-let* ((docsets-path (cond ((memq system-type '(gnu gnu/linux gnu/freebsd)) "~/.local/share/Zeal/Zeal/docsets")
+                                ((eq system-type 'darwin) "~/Library/Application Support/Dash/DocSets")))
+            (docsets-path (expand-file-name docsets-path))
+            ((file-directory-p docsets-path)))
+      docsets-path
+    (if-let* ((docsets-path (expand-file-name "~/.docsets"))
+              ((file-directory-p docsets-path)))
+        docsets-path
+      (locate-user-emacs-file "docsets/")))
   "Default path for docsets.
 If you're setting this option manually, set it to an absolute
 path.  You can use `expand-file-name' function for that."
