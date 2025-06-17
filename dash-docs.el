@@ -278,21 +278,21 @@ If doesn't exist, it asks to create it."
   "Extract DOCSET-TEMP-PATH to DASH-DOCS-DOCSETS-PATH, and return the folder that was newly extracted."
   (with-temp-buffer
     (let* ((call-process-args (list "tar" nil t nil))
-	   (process-args (list
-			  "xfv" docset-temp-path
-			  "-C" (dash-docs-docsets-path)))
-	   ;; On Windows, several elements need to be removed from filenames, see
-	   ;; https://docs.microsoft.com/en-us/windows/desktop/FileIO/naming-a-file#naming-conventions.
-	   ;; We replace with underscores on windows. This might lead to broken links.
-	   (windows-args (list "--force-local" "--transform" "s/[<>\":?*^|]/_/g"))
-	   (result (apply #'call-process
-			  (append call-process-args process-args (when (eq system-type 'windows-nt) windows-args)))))
+           (process-args (list
+                          "xfv" docset-temp-path
+                          "-C" (dash-docs-docsets-path)))
+           ;; On Windows, several elements need to be removed from filenames, see
+           ;; https://docs.microsoft.com/en-us/windows/desktop/FileIO/naming-a-file#naming-conventions.
+           ;; We replace with underscores on windows. This might lead to broken links.
+           (windows-args (list "--force-local" "--transform" "s/[<>\":?*^|]/_/g"))
+           (result (apply #'call-process
+                          (append call-process-args process-args (when (eq system-type 'windows-nt) windows-args)))))
       (goto-char (point-max))
       (cond
        ((and (not (equal result 0))
-	     ;; TODO: Adjust to proper text. Also requires correct locale.
-	     (search-backward "too long" nil t))
-	(error "Failed to extract %s to %s. Filename too long. Consider changing `dash-docs-docsets-path' to a shorter value" docset-temp-path (dash-docs-docsets-path)))
+             ;; TODO: Adjust to proper text. Also requires correct locale.
+             (search-backward "too long" nil t))
+        (error "Failed to extract %s to %s. Filename too long. Consider changing `dash-docs-docsets-path' to a shorter value" docset-temp-path (dash-docs-docsets-path)))
        ((not (equal result 0)) (error "Failed to extract %s to %s. Error: %s" docset-temp-path (dash-docs-docsets-path) result)))
       (goto-char (point-max))
       (replace-regexp-in-string "^x " "" (car (split-string (thing-at-point 'line) "\\." t))))))
