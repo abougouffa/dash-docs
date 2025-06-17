@@ -104,6 +104,8 @@ Available formats are
 (define-obsolete-function-alias 'dash-docs-async-install-docset-from-file 'dash-docs-install-docset-from-file "2.0.0")
 (define-obsolete-function-alias 'dash-docs-install-user-docset 'dash-docs-install-extra-docset "2.0.0")
 (defalias 'dash-docs-update-docset 'dash-docs-install-docset)
+(make-obsolete 'dash-docs-buffer-local-docsets 'dash-docs-docsets "2.0.0")
+(defun dash-docs-buffer-local-docsets () dash-docs-docsets)
 
 (defun dash-docs-docset-path (docset)
   "Return the full path of the directory for DOCSET."
@@ -123,8 +125,7 @@ Available formats are
         (expand-file-name "Contents/Resources/docSet.dsidx" path)
       (error "Cannot find docset '%s' in `dash-docs-docsets-path'" docset))))
 
-(defvar dash-docs--connections nil
-  "List of conses like (\"Go\" . connection).")
+(defvar dash-docs--connections nil "List of conses like (\"Go\" . connection).")
 
 (defcustom dash-docs-browser-func 'browse-url
   "Default function to browse Dash's docsets.
@@ -152,17 +153,8 @@ Suggested values are:
 
 (defun dash-docs-filter-connections ()
   "Filter connections using `dash-docs--connections-filters'."
-  (let ((docsets (dash-docs-buffer-local-docsets))
-        (connections nil))
-    (setq docsets (append docsets dash-docs-common-docsets))
-    (delq nil (mapcar (lambda (y)
-                        (assoc y dash-docs--connections))
-                      docsets))))
-
-(defun dash-docs-buffer-local-docsets ()
-  "Get the docsets configured for the current buffer."
-  (or (and (boundp 'dash-docs-docsets) dash-docs-docsets)
-      '()))
+  (delq nil (mapcar (lambda (y) (assoc y dash-docs--connections))
+                    (append dash-docs-docsets dash-docs-common-docsets))))
 
 (defun dash-docs-create-common-connections ()
   "Create connections to sqlite docsets for common docsets."
@@ -175,12 +167,13 @@ Suggested values are:
 
 (defun dash-docs-create-buffer-connections ()
   "Create connections to sqlite docsets for buffer-local docsets."
-  (mapc (lambda (x) (when (not (assoc x dash-docs--connections))
-                      (let ((connection  (dash-docs-docset-db-path x)))
-                        (setq dash-docs--connections
-                              (cons (list x connection (dash-docs-docset-type connection))
-                                    dash-docs--connections)))))
-        (dash-docs-buffer-local-docsets)))
+  (mapc (lambda (x)
+          (when (not (assoc x dash-docs--connections))
+            (let ((connection (dash-docs-docset-db-path x)))
+              (setq dash-docs--connections
+                    (cons (list x connection (dash-docs-docset-type connection))
+                          dash-docs--connections)))))
+        dash-docs-docsets))
 
 (defun dash-docs-reset-connections ()
   "Wipe all connections to docsets."
@@ -220,13 +213,11 @@ See here the reason: https://github.com/areina/helm-dash/issues/17.")
 
 (defun dash-docs-official-docsets ()
   "Return a list of official docsets (http://kapeli.com/docset_links)."
-  (let ((docsets (dash-docs-read-json-from-url
-                  "https://api.github.com/repos/Kapeli/feeds/contents/")))
+  (let ((docsets (dash-docs-read-json-from-url "https://api.github.com/repos/Kapeli/feeds/contents/")))
     (delq nil (mapcar (lambda (docset)
                         (let ((name (assoc-default 'name docset)))
                           (if (and (equal (file-name-extension name) "xml")
-                                   (not
-                                    (member (file-name-sans-extension name) dash-docs-ignored-docsets)))
+                                   (not (member (file-name-sans-extension name) dash-docs-ignored-docsets)))
                               (file-name-sans-extension name))))
                       docsets))))
 
@@ -246,24 +237,19 @@ See here the reason: https://github.com/areina/helm-dash/issues/17.")
   "PROMPT user to choose one of the docsets in CHOICES.
 Report an error unless a valid docset is selected."
   (let ((completion-ignore-case t))
-    (completing-read (format "%s (%s): " prompt (car choices))
-                     choices nil t nil nil choices)))
+    (completing-read (format "%s (%s): " prompt (car choices)) choices nil t nil nil choices)))
 
 ;;;###autoload
 (defun dash-docs-activate-docset (docset)
   "Activate DOCSET.  If called interactively prompts for the docset name."
-  (interactive (list (dash-docs-read-docset
-                      "Activate docset"
-                      (dash-docs-installed-docsets))))
+  (interactive (list (dash-docs-read-docset "Activate docset" (dash-docs-installed-docsets))))
   (add-to-list 'dash-docs-common-docsets docset)
   (dash-docs-reset-connections))
 
 ;;;###autoload
 (defun dash-docs-deactivate-docset (docset)
   "Deactivate DOCSET.  If called interactively prompts for the docset name."
-  (interactive (list (dash-docs-read-docset
-                      "Deactivate docset"
-                      dash-docs-common-docsets)))
+  (interactive (list (dash-docs-read-docset "Deactivate docset" dash-docs-common-docsets)))
   (setq dash-docs-common-docsets (delete docset dash-docs-common-docsets)))
 
 (defun dash-docs--install-docset (url docset-name)
@@ -282,15 +268,12 @@ Report an error unless a valid docset is selected."
   "Extract DOCSET-TEMP-PATH to DASH-DOCS-DOCSETS-PATH, and return the folder that was newly extracted."
   (with-temp-buffer
     (let* ((call-process-args (list "tar" nil t nil))
-           (process-args (list
-                          "xfv" docset-temp-path
-                          "-C" (dash-docs-docsets-path)))
+           (process-args (list "xfv" docset-temp-path "-C" (dash-docs-docsets-path)))
            ;; On Windows, several elements need to be removed from filenames, see
            ;; https://docs.microsoft.com/en-us/windows/desktop/FileIO/naming-a-file#naming-conventions.
            ;; We replace with underscores on windows. This might lead to broken links.
            (windows-args (list "--force-local" "--transform" "s/[<>\":?*^|]/_/g"))
-           (result (apply #'call-process
-                          (append call-process-args process-args (when (eq system-type 'windows-nt) windows-args)))))
+           (result (apply #'call-process (append call-process-args process-args (when (eq system-type 'windows-nt) windows-args)))))
       (goto-char (point-max))
       (cond
        ((and (not (equal result 0))
