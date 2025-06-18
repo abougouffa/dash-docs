@@ -104,8 +104,10 @@ Available formats are
 (define-obsolete-function-alias 'dash-docs-async-install-docset-from-file 'dash-docs-install-docset-from-file "2.0.0")
 (define-obsolete-function-alias 'dash-docs-install-user-docset 'dash-docs-install-extra-docset "2.0.0")
 (defalias 'dash-docs-update-docset 'dash-docs-install-docset)
-(make-obsolete 'dash-docs-buffer-local-docsets 'dash-docs-docsets "2.0.0")
-(defun dash-docs-buffer-local-docsets () dash-docs-docsets)
+
+(defun dash-docs-buffer-local-docsets ()
+  "Get the installed buffer-local docsets."
+  (cl-intersection dash-docs-docsets (dash-docs-installed-docsets) :test #'equal))
 
 (defun dash-docs-docset-path (docset)
   "Return the full path of the directory for DOCSET."
@@ -154,7 +156,7 @@ Suggested values are:
 (defun dash-docs-filter-connections ()
   "Filter connections using `dash-docs--connections-filters'."
   (delq nil (mapcar (lambda (y) (assoc y dash-docs--connections))
-                    (append dash-docs-docsets dash-docs-common-docsets))))
+                    (append (dash-docs-buffer-local-docsets) dash-docs-common-docsets))))
 
 (defun dash-docs-create-common-connections ()
   "Create connections to sqlite docsets for common docsets."
@@ -173,7 +175,7 @@ Suggested values are:
               (setq dash-docs--connections
                     (cons (list x connection (dash-docs-docset-type connection))
                           dash-docs--connections)))))
-        dash-docs-docsets))
+        (dash-docs-buffer-local-docsets)))
 
 (defun dash-docs-reset-connections ()
   "Wipe all connections to docsets."
