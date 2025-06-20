@@ -261,8 +261,8 @@ Report an error unless a valid docset is selected."
     (dash-docs-install-docset-from-file docset-tmp-path)))
 
 ;;;###autoload
-(defun dash-docs-register-for-buffer (docsets)
-  "Register DOCSETS for the current buffer."
+(defun dash-docs-activate-docset-for-buffer (docsets)
+  "Register DOCSETS for the current buffer's mode."
   (interactive (list (completing-read-multiple "Select docsets: " (dash-docs-installed-docsets) nil t)))
   (setq-local dash-docs-docsets (cl-remove-duplicates (append dash-docs-docsets docsets))))
 
