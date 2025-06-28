@@ -94,6 +94,15 @@ Available formats are
   :type 'alist
   :group 'dash-docs)
 
+(defcustom dash-docs-browser-function 'browse-url
+  "Default function to browse Dash's docsets.
+Suggested values are:
+ * `browse-url'
+ * `eww-browse-url'
+ * `xwidget-webkit-browse-url'"
+  :type 'function
+  :group 'dash-docs)
+
 (defvar-local dash-docs-docsets nil
   "Buffer-local list of relevant docsets.")
 
@@ -103,6 +112,8 @@ Available formats are
 (define-obsolete-function-alias 'dash-docs-async-install-docset 'dash-docs-install-docset "2.0.0")
 (define-obsolete-function-alias 'dash-docs-async-install-docset-from-file 'dash-docs-install-docset-from-file "2.0.0")
 (define-obsolete-function-alias 'dash-docs-install-user-docset 'dash-docs-install-extra-docset "2.0.0")
+(define-obsolete-variable-alias 'dash-docs-browser-func 'dash-docs-browser-function "2.0.0")
+
 (defalias 'dash-docs-update-docset 'dash-docs-install-docset)
 
 (defun dash-docs-buffer-local-docsets ()
@@ -128,14 +139,6 @@ Available formats are
       (error "Cannot find docset '%s' in `dash-docs-docsets-path'" docset))))
 
 (defvar dash-docs--connections nil "List of conses like (\"Go\" . connection).")
-
-(defcustom dash-docs-browser-func 'browse-url
-  "Default function to browse Dash's docsets.
-Suggested values are:
- * `browse-url'
- * `eww-browse-url'"
-  :type 'function
-  :group 'dash-docs)
 
 (defun dash-docs-docsets-path ()
   "Return the path where Dash's docsets are stored."
@@ -424,7 +427,7 @@ Get required params to call `dash-docs-result-url' from SEARCH-RESULT."
   (let ((docset-name (car search-result))
         (filename (nth 2 (cadr search-result)))
         (anchor (nth 3 (cadr search-result))))
-    (funcall dash-docs-browser-func (dash-docs-result-url docset-name filename anchor))))
+    (funcall dash-docs-browser-function (dash-docs-result-url docset-name filename anchor))))
 
 (defun dash-docs-add-to-kill-ring (search-result)
   "Add to kill ring a formatted string to call `dash-docs-browse-url' with SEARCH-RESULT."
