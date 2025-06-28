@@ -9,7 +9,7 @@
 ;;         Abdelhak Bougouffa <abougouffa@fedoraproject.org>
 ;;
 ;; URL: http://github.com/abougouffa/dash-docs
-;; Version: 2.0.0rc
+;; Version: 2.0.0
 ;; Package-Requires: ((emacs "29.1"))
 ;; Keywords: docs
 
